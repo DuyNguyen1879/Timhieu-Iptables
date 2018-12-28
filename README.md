@@ -210,7 +210,7 @@ ví dụ: –sport 21 (cổng 21), --sport 22:88 (các cổng 22 .. 88), --sport
 
 - Dưới đây mình sẽ thực hiện 1 bài lab cơ bản khai thác bảng filter và bảng NAT của Iptables.
 
-![alt](images/chains.png)
+![alt](images/lab.png)
 
 - Mục đích: 
   * Chỉ cho phép ssh từ 10.5.0.234 -> 10.5.0.210. 
