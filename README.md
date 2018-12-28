@@ -207,4 +207,153 @@ ví dụ: –sport 21 (cổng 21), --sport 22:88 (các cổng 22 .. 88), --sport
 
 **6. Lab**
 
+- Dưới đây mình sẽ thực hiện 1 bài lab cơ bản khai thác bảng filter và bảng NAT của Iptables.
+- Mục đích: 
+  * Chỉ cho phép ssh từ 10.5.0.234 -> 10.5.0.210. 
+  * Build container nginx trên server 10.5.0.210 để xem cơ chế NAT của Iptables trên docker.
 
+***a.Khai thác bảng filter***
+
+- Kiểm tra xem iptables đã được cài đặt chưa, và list các rule mặc định của bảng filter:
+
+  iptables -t filter -L -v
+
+```
+Chain INPUT (policy ACCEPT 26690 packets, 5171K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain FORWARD (policy DROP 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain OUTPUT (policy ACCEPT 26342 packets, 1219K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain DOCKER (0 references)
+ pkts bytes target     prot opt in     out     source               destination         
+
+Chain DOCKER-ISOLATION (0 references)
+ pkts bytes target     prot opt in     out     source               destination
+```
+- Ta thực hiện config iptables chỉ cho phép ssh từ 10.5.0.234 -> 10.5.0.210
+
+```
+iptables -t filter -A INPUT -p tcp --dport 22 -s 10.5.0.234 -j ACCEPT
+iptables -t filter -A INPUT -p tcp --dport 22 -j DROP
+```
+- Thực hiện check các rule mới được áp dụng:
+
+```
+[root@sysadmin-test-0 ~]# iptables -L -v          
+Chain INPUT (policy ACCEPT 221K packets, 40M bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+    4   216 ACCEPT     tcp  --  any    any     10.5.0.234           anywhere             tcp dpt:ssh
+    7   420 DROP       tcp  --  any    any     anywhere             anywhere             tcp dpt:ssh
+
+Chain FORWARD (policy DROP 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+   38  5433 DOCKER-ISOLATION  all  --  any    any     anywhere             anywhere            
+   22  1415 DOCKER     all  --  any    docker0  anywhere             anywhere            
+    0     0 ACCEPT     all  --  any    docker0  anywhere             anywhere             ctstate RELATED,ESTABLISHED
+   16  4018 ACCEPT     all  --  docker0 !docker0  anywhere             anywhere            
+    0     0 ACCEPT     all  --  docker0 docker0  anywhere             anywhere            
+
+Chain OUTPUT (policy ACCEPT 218K packets, 10M bytes)
+ pkts bytes target     prot opt in     out     source               destination       
+```
+
+- Kết quả ta thử thực hiện check ssh đến 10.5.0.210:
+  * Ở trên 10.5.0.234 ta có thể ssh -> 10.5.0.210 
+  ```
+  telnet 10.5.0.210 22
+  Trying 10.5.0.210...
+  Connected to 10.5.0.210.
+  Escape character is '^]'.
+  SSH-2.0-OpenSSH_7.4
+  ```
+  
+  * Ở trên máy khác, sẽ không ssh được đến 10.5.0.210
+  ```
+  telnet 10.5.0.210 22
+  Trying 10.5.0.210...
+  telnet: Unable to connect to remote host: Connection timed out
+  ```
+
+***b. Build container nginx để xem cơ chế NAT iptables:***
+
+- Check bảng NAT trước khi build container nginx: 
+  
+```
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+DOCKER     all  --  anywhere             anywhere             ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+DOCKER     all  --  anywhere            !loopback/8           ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
+MASQUERADE  all  --  172.17.0.0/16        anywhere            
+
+Chain DOCKER (2 references)
+target     prot opt source               destination         
+RETURN     all  --  anywhere             anywhere        
+```
+- Ta thực hiện build container nginx:
+
+```
+docker run --name test-nginx -p 80:80 -d nginx
+```
+Câu lệnh trên ta thực hiện run 1 container nginx ở background, map port 80 trong container ra host   
+
+- Check container nginx có đang chạy ko:
+
+```
+[root@sysadmin-test-0 ~]# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                NAMES
+ff2dbb1eef19        nginx               "nginx -g 'daemon ..."   4 seconds ago       Up 4 seconds        0.0.0.0:80->80/tcp   test-nginx
+```
+- Mỗi một container trong docker sẽ được nhận 1 IP riêng, để kiểm tra IP của container trên ta thực hiện lệnh sau:
+
+```
+[root@sysadmin-test-0 ~]# docker inspect ff2dbb1eef19 | grep IPAddress
+            "SecondaryIPAddresses": null,
+            "IPAddress": "172.17.0.2",
+
+```
+
+- Trên server 10.5.0.210 ta show bảng nat của iptables: 
+```
+[root@sysadmin-test-0 ~]# iptables -t nat -L
+Chain PREROUTING (policy ACCEPT)
+target     prot opt source               destination         
+DOCKER     all  --  anywhere             anywhere             ADDRTYPE match dst-type LOCAL
+
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+DOCKER     all  --  anywhere            !loopback/8           ADDRTYPE match dst-type LOCAL
+
+Chain POSTROUTING (policy ACCEPT)
+target     prot opt source               destination         
+MASQUERADE  all  --  172.17.0.0/16        anywhere            
+MASQUERADE  tcp  --  172.17.0.2           172.17.0.2           tcp dpt:http
+
+Chain DOCKER (2 references)
+target     prot opt source               destination         
+RETURN     all  --  anywhere             anywhere            
+DNAT       tcp  --  anywhere             anywhere             tcp dpt:http to:172.17.0.2:80
+```
+
+- Ta thực hiện check service nginx trên server 10.5.0.210 có chạy không:
+
+```
+thangtq@thangtq:~$ curl -s -I 10.5.0.210 | grep HTTP
+HTTP/1.1 200 OK
+```
+-> Khi có 1 gói tin từ ngoài được gửi đến 10.5.0.210:80. Iptables sẽ thực hiện DNAT 10.5.0.210:80 -> 172.17.0.2:80.
