@@ -8,16 +8,16 @@
    * 4. Các rule trong iptables.
    * 5. Các tùy chọn.
    * 6. Lab
-===========
+   
 
 **1. Iptables là gì?**
 
-- 1.1. Giới thiệu:
+- ***1.1. Giới thiệu***
   - Trước hết để tìm hiểu về Iptables, các bạn cần phải nắm được các tham số cơ bản trong gói tin: source ip, destination ip, port, TOS, TTL và hiểu được NAT là gì. Các bạn có thể tham khảo về NAT trong bài sau: https://github.com/thangtq710/Ghi-chep-NAT-DNAT-SNAT.
   - Iptables là một ứng dụng tường lửa cực kì mạnh mẽ, được tích hợp mặc định trong hầu hết các bản phân phối của hệ điều hành Linux (CentOS, Ubuntu…), chính xác hơn là iptables/netfilter. Iptables hoạt động dựa trên việc phân loại và thực thi các package ra/vào theo các quy tắc được thiết lập từ trước. Nó có khả năng phân tích, lọc gói tin 1 cách hiệu quả, cung cấp khả năng NAT, có khả năng ngăn chặn một số cơ chế tấn công theo kiểu DoS.
   - Iptables/Netfilter gồm 2 phần là Netfilter ở trong nhân Linux và Iptables nằm ngoài nhân. Iptables chịu trách nhiệm giao tiếp với người dùng và sau đó đẩy các rules của người dùng vào cho Netfiler xử lí. Netfilter làm việc trực tiếp trong nhân, nó tiến hành lọc, xử lí các gói dữ liệu ở mức IP.
 
-- 1.2. Sự khác biệt trên các distro khác nhau.
+- ***1.2. Sự khác biệt trên các distro khác nhau.***
   * Trên CentOS, iptables được mặc định cài đặt với hệ điều hành.
   * Trên ubuntu, ufw được mặc định cài đặt với hệ điều hành. Về bản chất, ufw is a frontend for iptables. Tức có nghĩa là thay vì gõ lệnh iptables, thì các bạn gõ lệnh ufw. Sau đó, ufw sẽ chuyển các lệnh của ufw sang tập lệnh của iptables. Tất nhiên, iptables sẽ xử lý các quy tắc, chính sách đó. Lệnh ufw là dễ dàng hơn cho những người mới bắt đầu tìm hiểu về firewall. ufw cung cấp framework để quản lý netfilter, và giao diện command-line thân thiện để quản lý firewall.
 
@@ -45,11 +45,11 @@
  
 - **Chains**: Mỗi table được tạo với một số chain nhất định. Chains cho phép lọc gói tin tại các điểm khác nhau. Iptable có thể thiết lập với các chains sau:
 
-![alt](images/iptables2.png)
+![alt](images/chains.png)
 
 - Targets:
 
-![alt](images/target.png)
+![alt](images/targets.png)
 
 -> Để hiểu rõ hơn quá trình xử lí gói tin của iptables chúng ta sẽ tìm hiểu ở phần tiếp theo.
 
@@ -57,14 +57,14 @@
 
 ![alt](images/packetflow.png)
 
-*3.1. Gói tin đi từ ngoài đến:*
+***3.1. Gói tin đi từ ngoài đến:***
   - Đầu tiên gói tin đi vào bảng RAW, chain PREROUTING. Tại đây, IPTables sẽ xử lý là có theo dõi kết nối này hay không. 1 gói tin có thể thuộc một kết nối mới hoặc cũng có thể là của 1 một kết nối đã tồn tại. 
   - Sau đó, gói tin chuyển đến bảng Mangle, chain PREROUTING. Tại đây, Nếu cần thiết phải thay đổi một số giá trị trong header của gói tin (TTL, ToS...), trước khi được định tuyến, thì nó sẽ xử lý ở bảng này
   - Tiếp theo, gói tin đi vào bảng NAT, chain PREROUTING. Tại đây, địa chỉ đích của gói tin có thể bị thay đổi hoặc không, qua bộ Routing và sẽ quyết định xem gói tin đó thuộc firewall hay không:
     * TH1: **gói tin đó là của firewall**: gói tin sẽ đi qua table Mangle, chain input, nếu cần chỉnh sửa các giá trị header của gói tin trước khi đi vào bảng filter thì được thực hiện tại đây, và đến table Filter. Tại đây gói tin sẽ được áp dụng các rules và ứng với mỗi rule cụ thể sẽ được áp dụng với target. Sau đó đến Local Process (chính là các dịch vụ trên server).
 	* TH2: **gói tin không phải của firewall**: sẽ được đưa đến table Mangle với chain FORWARD đến bảng filter với chain FORWARD. Ở đây, gói tin sẽ được lọc với các rules. Nếu rules cho phép đi qua, gói tin sẽ chuyển đến  table Mangle và NAT với chain POSTROUTING để thực hiên việc chuyển đổi địa chỉ nguồn với target SNAT nếu cần thiết.
 	
-*3.2. Gói tin là của Firewall đi ra (Các service trên server firewall đi ra, có thể là khởi tạo một kết nối mới hoặc trả lời các kết nối đi vào):*
+***3.2. Gói tin là của Firewall đi ra (Các service trên server firewall đi ra, có thể là khởi tạo một kết nối mới hoặc trả lời các kết nối đi vào):***
   - Khi firewall cần gửi dữ liệu ra ngoài. Gói dữ liệu sẽ được dẫn vào đi qua sự kiểm tra của OUTPUT chain trong mangle table (nếu cần), tiếp đó là kiểm tra trong OUTPUT chain của nat table để xem DNAT (DNAT sẽ thay đổi địa chỉ đến) có cần hay không và OUTPUT chain của filter table sẽ kiểm tra gói dữ liệu nhằm phát hiện các gói dữ liệu không được phép gởi đi.Cuối cùng trước khi gói dữ liệu được đưa ra lại Internet, SNAT and QoS sẽ được kiểm tra trong POSTROUTING chain.
   
 **4. Các rule trong iptables**
@@ -140,31 +140,44 @@ Giờ nếu bạn muốn thêm một rule mới thì làm thế nào? Sau đây 
 
 ***Các tùy chọn để chỉ định thông số***
 
-– chỉ định tên table: -t ,
+– chỉ định tên table: -t
 
+```
 ví dụ -t filter, -t nat, .. nếu không chỉ định table, giá trị mặc định là filter table
+```
 
-– chỉ đinh loại giao thức: -p ,
+– chỉ đinh loại giao thức: -p
 
+```
 ví dụ -p tcp, -p udp hoặc -p ! udp để chỉ định các giao thức không phải là udp
+```
 
-– chỉ định card mạng vào: -i ,
+– chỉ định card mạng vào: -i 
 
+```
 ví dụ: -i eth0, -i lo
+```
 
-– chỉ định card mạng ra: -o ,
+– chỉ định card mạng ra: -o
 
+```
 ví dụ: -o eth0
+```
 
-– chỉ định địa chỉ IP nguồn: -s <địa_chỉ_ip_nguồn>,
+– chỉ định địa chỉ IP nguồn: -s <địa_chỉ_ip_nguồn>
 
+```
 ví dụ: -s 192.168.0.0/24 (mạng 192.168.0 với 24 bít mạng), -s 192.168.0.1-192.168.0.3 (các IP 192.168.0.1, 192.168.0.2, 192.168.0.3).
+```
 
 – chỉ định địa chỉ IP đích: -d <địa_chỉ_ip_đích>, tương tự như -s
 
+
 – chỉ định cổng nguồn: --sport ,
 
+```
 ví dụ: –sport 21 (cổng 21), --sport 22:88 (các cổng 22 .. 88), --sport 0 (các cổng <=80), –sport 22: (các cổng >=22)
+```
 
 – chỉ định cổng đích: --dport , tương tự như --sport
 
@@ -191,7 +204,6 @@ ví dụ: –sport 21 (cổng 21), --sport 22:88 (các cổng 22 .. 88), --sport
 
 – chèn thêm rule: -I (insert)
 
--> Cuối bài mình sẽ thực hiện 1 bài lab cơ bản về iptables:
 
 **6. Lab**
 
