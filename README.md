@@ -1,6 +1,6 @@
 # Tìm hiểu về Iptables.
 
-**Mục lục:**
+- Mục lục:
 
    * 1. Iptables là gì?
    * 2. Cơ chế hoạt đông và các thành phần của Iptables.
@@ -8,6 +8,8 @@
    * 4. Các rule trong iptables.
    * 5. Các tùy chọn.
    * 6. Lab
+===========
+
 **1. Iptables là gì?**
 
 - 1.1. Giới thiệu:
@@ -23,14 +25,11 @@
 
 - Cơ chế lọc gói tin của Iptable được xây dựng dựa trên 3 thành phần cơ bản đó là **table**, **chain** và **target**.
 
+- Iptables sử dụng table để định nghĩa các rules cụ thể cho các gói tin, mỗi table có thể gắn nhiều chain, mỗi 1 chain là 1 bộ quy tắc. Bây giờ chúng ta sẽ đi tìm hiểu cụ thể từng thành phần trong Iptables.
+
 ![alt](images/iptables1.png)
 
--  "A table is something that allows you to process packets in specific ways" - Iptables sử dụng table để xử lý các gói tin theo những cách cụ thể. Nếu không chỉ định cụ thể thì mặc định là chúng ta sẽ làm việc với filter table, ngoài ra còn có các bảng khác sẽ nói rõ hơn trong phần tiếp theo.
-- Mỗi bảng sẽ được gắn thêm các chain. Việc gắn thêm chain vào table cho phép xử lý gói tin ở những giai đoạn khác nhau, ví dụ chúng ta có thể xử lý gói tin ngay khi gói tin vừa đến interface hay xử lý các gói tin trước khi các gói này được đẩy ra interface. Bạn có thể tạo ra rule rất cụ thể, ví dụ gói tin đó đến từ port nào, đến từ IP nào sau đó chỉ định hành động (TARGET) sẽ áp dụng với gói tin này.Khi có một gói tin đến hoặc đi, Iptables sẽ so sánh với từng rule trong một chain. Khi một gói tin giống với rule đặt ra Iptable sẽ thực hiện hành động ứng với rule đó. Nhưng nếu gói tin không khớp với bất cứ rule nào thuộc chain, Iptable sẽ áp dụng "default policy" cho gói tin đó. Mặc định "default policy" của các chain là cho phép gói tin.
-
--> Tóm lại, Iptables sử dụng table để định nghĩa các rules cụ thể cho các gói tin, mỗi table có thể gắn nhiều chain, mỗi 1 chain là 1 bộ quy tắc. Bây giờ chúng ta sẽ đi tìm hiểu cụ thể từng thành phần trong Iptables.
-
-- Table: Iptable sử dụng table để định nghĩa các rules cụ thể cho các gói tin. Các phiên bản Linux hiện nay có 4 loại table khác nhau:
+- **Table**: Các phiên bản Linux hiện nay có 4 loại table khác nhau:
 
   * Đầu tiên phải kể đến filter table: Table này quen thuộc và hay được sử dụng nhất. table này nhằm quyết định liệu gói tin có được chuyển đến địa chỉ đích hay không.
   
@@ -44,7 +43,7 @@
 
 ![alt](images/iptables3.png)
  
-- Chains: Mỗi table được tạo với một số chains nhất định. Chains cho phép lọc gói tin tại các điểm khác nhau. Iptable có thể thiết lập với các chains sau:
+- **Chains**: Mỗi table được tạo với một số chain nhất định. Chains cho phép lọc gói tin tại các điểm khác nhau. Iptable có thể thiết lập với các chains sau:
 
 ![alt](images/iptables2.png)
 
@@ -99,27 +98,39 @@ DROP      all    --   any  any   anywhere   anywhere
 
 Để dễ hiểu hơn, mình giải thích các quy tắc ở table trên cho các bạn:
 
+```
 ACCEPT    all    --   lo   any   anywhere   anywhere
+```
 
 Chấp nhận toàn bộ gói tin từ interface lo, lo ở đây nghĩa là “Loopback Interface“, là interface ảo nội bộ, chẳng hạn như IP 127.0.0.1 là kết nối qua thiết bị này.
 
+```
 ACCEPT    all    --   any  any   anywhere   anywhere    ctstate  RELATED,ESTABLISHED
+```
 
 Chấp nhận toàn bộ gói tin của kết nối hiện tại. Nghĩa là khi bạn đang ở trong SSH và sửa đổi lại Firewall, nó sẽ không đá bạn ra khỏi SSH nếu bạn không thỏa mãn quy tắc.
 
+```
 ACCEPT    tcp    --   any  any   anywhere   anywhere    tcp      dpt:ssh
+```
 
 Chấp nhận toàn bộ gói tin của giao thức SSH ở bất cứ interface nào, với bất kể IP nguồn và đích là bao nhiêu. Mặc định sẽ hiển thị dpt:ssh để biểu diễn cổng 22 của SSH, nếu bạn đổi SSH thành cổng khác thì sẽ hiển thị số cổng.
 
+```
 ACCEPT    tcp    --   any  any   anywhere   anywhere    tcp      dpt:http
+```
 
 Cho phép kết nối vào cổng 80, mặc định sẽ biểu diễn thành chữ http.
 
+```
 ACCEPT    tcp    --   any  any   anywhere   anywhere    tcp      dpt:https
+```
 
 Cho phép kết nối vào cổng 443, mặc định nó sẽ biểu diễn thành chữ https.
 
+```
 DROP      all    --   any  any   anywhere   anywhere
+```
 
 Loại bỏ tất cả các gói tin nếu không khớp với các rule ở trên.
 
