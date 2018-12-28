@@ -1,15 +1,21 @@
 # Tìm hiểu về Iptables.
 
-- **Mục lục:**
+**Mục lục:**
 
    1.Iptables là gì?
-   2.Cơ chế hoạt đông và các thành phần của Iptables.
-   3.Luồng xử lý gói tin trong Iptables.
-   4.Các rule trong iptables.
-   5.Các tùy chọn.
-   6.Lab
-   7.Tổng kết
    
+   2.Cơ chế hoạt đông và các thành phần của Iptables.
+   
+   3.Luồng xử lý gói tin trong Iptables.
+   
+   4.Các rule trong iptables.
+   
+   5.Các tùy chọn.
+   
+   6.Lab
+   
+   7.Tổng kết   
+
 
 **1. Iptables là gì?**
 
