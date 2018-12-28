@@ -2,12 +2,13 @@
 
 - **Mục lục:**
 
-   1.  Iptables là gì?
-   2.  Cơ chế hoạt đông và các thành phần của Iptables.
-   3.  Luồng xử lý gói tin trong Iptables.
-   4.  Các rule trong iptables.
-   5.  Các tùy chọn.
-   6.  Lab
+   1.Iptables là gì?
+   2.Cơ chế hoạt đông và các thành phần của Iptables.
+   3.Luồng xử lý gói tin trong Iptables.
+   4.Các rule trong iptables.
+   5.Các tùy chọn.
+   6.Lab
+   7.Tổng kết
    
 
 **1. Iptables là gì?**
@@ -47,7 +48,7 @@
 
 ![alt](images/chains.png)
 
-- Targets:
+- **Targets**:
 
 ![alt](images/targets.png)
 
@@ -208,6 +209,9 @@ ví dụ: –sport 21 (cổng 21), --sport 22:88 (các cổng 22 .. 88), --sport
 **6. Lab**
 
 - Dưới đây mình sẽ thực hiện 1 bài lab cơ bản khai thác bảng filter và bảng NAT của Iptables.
+
+![alt](images/chains.png)
+
 - Mục đích: 
   * Chỉ cho phép ssh từ 10.5.0.234 -> 10.5.0.210. 
   * Build container nginx trên server 10.5.0.210 để xem cơ chế NAT của Iptables trên docker.
@@ -271,7 +275,7 @@ Chain OUTPUT (policy ACCEPT 218K packets, 10M bytes)
   SSH-2.0-OpenSSH_7.4
   ```
   
-  * Ở trên máy khác, sẽ không ssh được đến 10.5.0.210
+  * Ở trên máy khác (192.168.23.92) , sẽ không ssh được đến 10.5.0.210
   ```
   telnet 10.5.0.210 22
   Trying 10.5.0.210...
@@ -280,7 +284,7 @@ Chain OUTPUT (policy ACCEPT 218K packets, 10M bytes)
 
 ***b. Build container nginx để xem cơ chế NAT iptables:***
 
-- Check bảng NAT trước khi build container nginx: 
+- Check bảng NAT trước khi build container nginx: iptables -t nat -L
   
 ```
 Chain PREROUTING (policy ACCEPT)
@@ -302,6 +306,7 @@ Chain DOCKER (2 references)
 target     prot opt source               destination         
 RETURN     all  --  anywhere             anywhere        
 ```
+
 - Ta thực hiện build container nginx:
 
 ```
@@ -326,6 +331,7 @@ ff2dbb1eef19        nginx               "nginx -g 'daemon ..."   4 seconds ago  
 ```
 
 - Trên server 10.5.0.210 ta show bảng nat của iptables: 
+
 ```
 [root@sysadmin-test-0 ~]# iptables -t nat -L
 Chain PREROUTING (policy ACCEPT)
@@ -350,10 +356,17 @@ RETURN     all  --  anywhere             anywhere
 DNAT       tcp  --  anywhere             anywhere             tcp dpt:http to:172.17.0.2:80
 ```
 
-- Ta thực hiện check service nginx trên server 10.5.0.210 có chạy không:
+- Trên máy 192.168.23.92, ta thực hiện check service nginx trên server 10.5.0.210 có chạy không:
 
 ```
 thangtq@thangtq:~$ curl -s -I 10.5.0.210 | grep HTTP
 HTTP/1.1 200 OK
 ```
 -> Khi có 1 gói tin từ ngoài được gửi đến 10.5.0.210:80. Iptables sẽ thực hiện DNAT 10.5.0.210:80 -> 172.17.0.2:80.
+
+**7. Lời kết**
+
+- Trên đây là những đúc rút của tôi sau quá trình tìm hiểu về iptables. Iptables là một mảng kiến thức khá rộng và khó, rất mong các bạn đọc và cùng chia sẻ những kiến thức về iptables.
+- Tài liệu tham khảo: 
+  * https://www.booleanworld.com/depth-guide-iptables-linux-firewall/
+  * https://github.com/hocchudong/thuctap012017/tree/master/XuanSon/Security/Iptables
